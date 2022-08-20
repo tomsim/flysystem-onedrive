@@ -3,8 +3,7 @@
 # Flysystem adapter for the Microsoft OneDrive API
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/tomsim/flysystem-onedrive.svg?style=flat-square)](https://packagist.org/packages/tomsim/flysystem-onedrive)
-[![Build Status](https://img.shields.io/travis/tomsim/flysystem-onedrive/main.svg?style=flat-square)](https://travis-ci.org/tomsim/flysystem-onedrive)
-[![StyleCI](https://github.styleci.io/repos/526379113/shield?branch=main)](https://styleci.io/repos/526379113)
+[![StyleCI](https://github.styleci.io/repos/526852553/shield?branch=main)](https://styleci.io/repos/526852553)
 [![Quality Score](https://img.shields.io/scrutinizer/g/tomsim/flysystem-onedrive.svg?style=flat-square)](https://scrutinizer-ci.com/g/tomsim/flysystem-onedrive)
 [![Total Downloads](https://img.shields.io/packagist/dt/tomsim/flysystem-onedrive.svg?style=flat-square)](https://packagist.org/packages/tomsim/flysystem-onedrive)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md) 

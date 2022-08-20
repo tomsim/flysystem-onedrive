@@ -1,0 +1,44 @@
+{
+    "name": "tomsim/flysystem-onedrive",
+    "description": "Flysystem Adapter for the OneDrive API",
+    "keywords": [
+        "flysystem-onedrive",
+        "flysystem",
+        "onedrive",
+        "api"
+    ],
+    "homepage": "https://github.com/tomsim/flysystem-onedrive",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tomas Šimkevičius",
+            "email": "tomas.simkevicius@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.0",
+        "league/flysystem": "^3.1",
+        "microsoft/microsoft-graph": "^1.0"
+    },
+    "require-dev": {
+        "league/flysystem-adapter-test-utilities": "^3.1",
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "TomSim\\FlysystemOneDrive\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "TomSim\\FlysystemOneDrive\\Test\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

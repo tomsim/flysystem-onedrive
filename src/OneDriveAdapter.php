@@ -3,12 +3,12 @@
 namespace TomSim\FlysystemOneDrive;
 
 use ArrayObject;
+use DateTime;
 use Exception;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Psr7\LimitStream;
 use GuzzleHttp\Psr7\Stream;
 use GuzzleHttp\Psr7\Utils;
-use League\Flysystem\Adapter\Polyfill\NotSupportingVisibilityTrait;
 use League\Flysystem\Config;
 use League\Flysystem\DirectoryAttributes;
 use League\Flysystem\FileAttributes;
@@ -27,11 +27,10 @@ use League\Flysystem\UnableToWriteFile;
 use Microsoft\Graph\Graph;
 use Microsoft\Graph\Model;
 use Microsoft\Graph\Model\DriveItem;
+use Microsoft\Graph\Model\Permission;
 
 class OneDriveAdapter implements FilesystemAdapter
 {
-    //use NotSupportingVisibilityTrait;
-
     /**
      *  @var \Microsoft\Graph\Graph
      */
@@ -49,10 +48,10 @@ class OneDriveAdapter implements FilesystemAdapter
      * @param string                 $prefix
      * @param string                 $base
      */
-    public function __construct(Graph $graph, $prefix = 'root', $base = '/drive/')
+    public function __construct(Graph $graph, $prefix = '', $base = '/drive/root:')
     {
-        $this->graph = $graph;
-        $this->prefixer = new PathPrefixer($base.$prefix.':');
+        $this->graph    = $graph;
+        $this->prefixer = new PathPrefixer($base.$prefix);
     }
 
     /**
@@ -64,7 +63,7 @@ class OneDriveAdapter implements FilesystemAdapter
         $path = $this->prefixer->prefixPath($path);
 
         try {
-            $response = $this->graph->createRequest('GET', $path)->execute();
+            $this->graph->createRequest('GET', $path)->execute();
         } catch (\Exception $e) {
             $responseMessage = json_decode($e?->getResponse()?->getBody(), false);
             if ($responseMessage?->error?->code == 'itemNotFound') {
@@ -86,7 +85,7 @@ class OneDriveAdapter implements FilesystemAdapter
         $path = $this->prefixer->prefixPath($path);
 
         try {
-            $response = $this->graph->createRequest('GET', $path)->execute();
+            $this->graph->createRequest('GET', $path)->execute();
         } catch (\Exception $e) {
             $responseMessage = json_decode($e?->getResponse()?->getBody(), false);
             if ($responseMessage?->error?->code == 'itemNotFound') {
@@ -201,7 +200,7 @@ class OneDriveAdapter implements FilesystemAdapter
     public function createDirectory(string $path, Config $config): void
     {
         try {
-            $patch = explode('/', $this->prefixer->prefixPath($path));
+            $patch  = explode('/', $this->prefixer->prefixPath($path));
             $sliced = implode('/', array_slice($patch, 0, -1));
 
             $endpoint = $sliced.':/children';
@@ -297,7 +296,7 @@ class OneDriveAdapter implements FilesystemAdapter
      * @throws UnableToRetrieveMetadata
      * @throws FilesystemException
      */
-    public function webUrl(string $path): ?string
+    public function getUrl(string $path): ?string
     {
         try {
             $info = $this->graph->createRequest('GET', $this->prefixer->prefixPath($path))
@@ -305,6 +304,37 @@ class OneDriveAdapter implements FilesystemAdapter
                         ->execute();
 
             return $info?->getWebUrl();
+        } catch (\Exception $e) {
+            $responseMessage = json_decode($e?->getResponse()?->getBody(), false);
+
+            throw UnableToRetrieveMetadata::create($this->prefixer->prefixPath($path), 'weburl', $responseMessage?->error?->message);
+        }
+    }
+
+    /**
+     * @throws UnableToRetrieveMetadata
+     * @throws FilesystemException
+     */
+    public function getPublicUrl(string $path): ?string
+    {
+        try {
+            $info = $this->graph->createRequest('GET', $this->prefixer->prefixPath($path))
+                        ->setReturnType(DriveItem::class)
+                        ->execute();
+
+            $fileId  = $info?->getId();
+            $driveId = $info?->getParentReference()?->getDriveId();
+
+            $info = $this->graph->createRequest('POST', '/drives/'.$driveId.'/items/'.$fileId.'/createLink')
+                        ->attachBody([
+                            'type'               => 'view',
+                            'scope'              => 'anonymous',
+                            'expirationDateTime' => (new DateTime('2099-01-01'))->format(DATE_ATOM)
+                        ])
+                        ->setReturnType(Permission::class)
+                        ->execute();
+
+            return $info?->getLink()->getWebUrl();
         } catch (\Exception $e) {
             $responseMessage = json_decode($e?->getResponse()?->getBody(), false);
 
@@ -364,15 +394,16 @@ class OneDriveAdapter implements FilesystemAdapter
             throw new Exception('Destination '.$destination.' exist');
         }
 
-        $source = $this->prefixer->prefixPath($source);
+        $source      = $this->prefixer->prefixPath($source);
         $destination = $this->prefixer->prefixPath($destination);
-        $folder = implode('/', array_slice(explode('/', $destination), 0, -1)).'/';
-        $forlderId = null;
+        $folder      = implode('/', array_slice(explode('/', $destination), 0, -1)).'/';
+        $forlderId   = null;
 
         try {
             $info = $this->graph->createRequest('GET', $folder)
                         ->setReturnType(DriveItem::class)
                         ->execute();
+
             $forlderId = $info?->getId();
         } catch (\Exception $e) {
             // Try to create directory
@@ -413,11 +444,11 @@ class OneDriveAdapter implements FilesystemAdapter
             throw new Exception('Destination '.$destination.' exist');
         }
 
-        $source = $this->prefixer->prefixPath($source);
+        $source      = $this->prefixer->prefixPath($source);
         $destination = $this->prefixer->prefixPath($destination);
-        $folder = implode('/', array_slice(explode('/', $destination), 0, -1)).'/';
-        $forlderId = null;
-        $driveId = null;
+        $folder      = implode('/', array_slice(explode('/', $destination), 0, -1)).'/';
+        $forlderId   = null;
+        $driveId     = null;
 
         try {
             $info = $this->graph->createRequest('GET', $folder)
@@ -425,7 +456,7 @@ class OneDriveAdapter implements FilesystemAdapter
                         ->execute();
 
             $forlderId = $info?->getId();
-            $driveId = $info?->getParentReference()?->getDriveId();
+            $driveId   = $info?->getParentReference()?->getDriveId();
         } catch (\Exception $e) {
             // Try to create directory
             $this->createDirectory($this->prefixer->stripDirectoryPrefix($folder), $config);
@@ -435,7 +466,7 @@ class OneDriveAdapter implements FilesystemAdapter
                         ->execute();
 
             $forlderId = $info?->getId();
-            $driveId = $info?->getParentReference()?->getDriveId();
+            $driveId   = $info?->getParentReference()?->getDriveId();
         }
 
         try {
@@ -463,12 +494,11 @@ class OneDriveAdapter implements FilesystemAdapter
         $path = $this->prefixer->prefixPath($path);
 
         try {
-            $stream = Utils::streamFor($contents);
+            $stream   = Utils::streamFor($contents);
             $fileSize = $stream->getSize();
 
             // If upload size bigger than 4MB
             if ($fileSize > 4 * 1000 * 1000) {
-                echo "#1\n";
                 $uploadSession = $this->graph->createRequest('POST', $path.':/createUploadSession')
                     ->addHeaders(['Content-Type' => 'application/json'])
                     ->attachBody([
@@ -480,14 +510,14 @@ class OneDriveAdapter implements FilesystemAdapter
                     ->setReturnType(Model\UploadSession::class)
                     ->execute();
 
-                $start = 0;
+                $start     = 0;
                 $chunkSize = 10 * 1024 * 1024;  //10MiB
                 do {
                     // Upload in chunks
                     $streamPart = new LimitStream($stream, $chunkSize, $start);
-                    $end = $streamPart->getSize();
-                    echo 'end:'.$end."\n";
-                    $response = $this->graph->createRequest('PUT', $uploadSession->getUploadUrl())
+                    $end        = $streamPart->getSize();
+ 
+                    $this->graph->createRequest('PUT', $uploadSession->getUploadUrl())
                         ->addHeaders([
                             'Content-Length' => $end,
                             'Content-Range'  => 'bytes '.$start.'-'.($start + $end - 1).'/'.$fileSize,

@@ -334,7 +334,7 @@ class OneDriveAdapter implements FilesystemAdapter
                         ->setReturnType(Permission::class)
                         ->execute();
 
-            return $info?->getLink()->getWebUrl();
+            return $info?->getLink()->getWebUrl().'?download=1';
         } catch (\Exception $e) {
             $responseMessage = json_decode($e?->getResponse()?->getBody(), false);
 

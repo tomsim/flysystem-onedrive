@@ -34,12 +34,12 @@ class OneDriveAdapter implements FilesystemAdapter
     /**
      *  @var \Microsoft\Graph\Graph
      */
-    private Graph $graph;
+    protected Graph $graph;
 
     /**
      * @var \League\Flysystem\PathPrefixer
      */
-    private PathPrefixer $prefixer;
+    protected PathPrefixer $prefixer;
 
     /**
      * OneDriveAdapter constructor.
@@ -516,7 +516,7 @@ class OneDriveAdapter implements FilesystemAdapter
                     // Upload in chunks
                     $streamPart = new LimitStream($stream, $chunkSize, $start);
                     $end        = $streamPart->getSize();
- 
+
                     $this->graph->createRequest('PUT', $uploadSession->getUploadUrl())
                         ->addHeaders([
                             'Content-Length' => $end,
